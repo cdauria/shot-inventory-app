@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Barriecito&display=swap');
+
+
 @import "tailwindcss";
 
 @theme {
@@ -18,7 +21,7 @@
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Barriecito', sans-serif !important;
 }
+
+

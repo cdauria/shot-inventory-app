@@ -1,75 +1,100 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Home() {
-  const [images, setImages] = useState([]);
-  const [currentImage, setCurrentImage] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+    const [images, setImages] = useState([]);
+    const [currentImage, setCurrentImage] = useState(null);
+    const [analysis, setAnalysis] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [showAnalysis, setShowAnalysis] = useState(false);
 
-  // Fetch images from the API route when the page loads
-  useEffect(() => {
-    const fetchImages = async () => {
-      try {
-        const res = await fetch("/api/airtable");
-        const data = await res.json();
+    useEffect(() => {
+        const fetchImages = async () => {
+            try {
+                const res = await fetch("/api/airtable");
+                const data = await res.json();
+                setImages(data.result);
+                if (data.result.length > 0) {
+                    setCurrentImage(data.result[Math.floor(Math.random() * data.result.length)]);
+                }
+            } catch (err) {
+                setError(err.message);
+            }
+        };
+        fetchImages();
+    }, []);
 
-        if (res.ok) {
-          setImages(data.result);
-          if (data.result.length > 0) {
-            setCurrentImage(data.result[Math.floor(Math.random() * data.result.length)]);
-          }
-        } else {
-          throw new Error(data.error || "Failed to load images");
+    const analyzeImage = async () => {
+        if (!currentImage) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch("/api/openai", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ imageUrl: currentImage.url })
+            });
+            const data = await res.json();
+            setAnalysis(data.result);
+            setShowAnalysis(true);
+        } catch (err) {
+            setError("Failed to analyze image.");
+        } finally {
+            setLoading(false);
         }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
     };
 
-    fetchImages();
-  }, []);
+    const changeImage = () => {
+        if (images.length > 0) {
+            setCurrentImage(images[Math.floor(Math.random() * images.length)]);
+            setAnalysis(null);
+            setShowAnalysis(false);
+        }
+    };
 
-  // Handle button click to show a new random image
-  const handleClick = () => {
-    if (images.length > 0) {
-      const randomIndex = Math.floor(Math.random() * images.length);
-      setCurrentImage(images[randomIndex]);
-    }
-  };
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-4"
+            style={{ fontFamily: "'Roboto', sans-serif", fontOpticalSizing: "auto", fontWeight: "400", fontStyle: "normal" }}
+        >
+            {/* Centered Title */}
+            <h1 className="text-5xl mb-2 text-center font-bold text-pink-500">recreate this shot!</h1>
 
-  return (
-    <div 
-      className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-4 font-bold"
-      style={{ fontFamily: "Impact, Haettenschweiler, Arial Black, sans-serif" }}
-    >
-      <h1 className="text-3xl mb-6">recreate this shot!</h1>
-
-      {loading && <p>Loading images...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-
-      {currentImage && (
-        <div className="mb-4 flex flex-col items-center">
-          <div className="border-4 border-white p-1">
-            <img
-              src={currentImage.url}
-              alt={currentImage.film || "Film Scene"}
-              className="w-[600px] h-[400px] object-cover rounded-lg"
-            />
-          </div>
-          <p className="mt-3 text-xl">{currentImage.film}</p>
+            {/* Card Layout */}
+            <div className="bg-black p-5 rounded-lg shadow-lg w-[600px] flex flex-col items-center border-5 border-white">
+                {currentImage && (
+                    <>
+                        <img
+                            src={currentImage.url}
+                            alt={currentImage.film || "Film Scene"}
+                            className="w-full h-auto object-cover rounded-lg"
+                        />
+                        <p className="mt-2 text-4xl text-center uppercase tracking-wide font-bold">{currentImage.film}</p>
+                        
+                        {!showAnalysis ? (
+                            <button
+                                onClick={analyzeImage}
+                                className="mt-2 px-2 py-5 text-md bg-black text-white border-5 border-white rounded-lg hover:bg-white hover:text-black transition duration-200"
+                            >
+                                click here for analysis
+                            </button>
+                        ) : (
+                            <>
+                                <p className="mt-4 text-xl text-justify text-white-300 w-full">{analysis}</p>
+                                <button
+                                    onClick={changeImage}
+                                    className="mt-4 px-6 py-3 text-lg bg-black text-white border-2 border-white rounded-lg hover:bg-white hover:text-black transition duration-200"
+                                >
+                                    click for a new shot
+                                </button>
+                            </>
+                        )}
+                    </>
+                )}
+                {loading && <p className="mt-4">analyzing...</p>}
+                {error && <p className="text-red-500 mt-4">{error}</p>}
+            </div>
         </div>
-      )}
-
-      <button
-        onClick={handleClick}
-        className="px-6 py-3 bg-black text-white border-2 border-white rounded-lg hover:bg-white hover:text-black transition duration-200"
-      >
-        give me another film
-      </button>
-    </div>
-  );
+    );
 }
